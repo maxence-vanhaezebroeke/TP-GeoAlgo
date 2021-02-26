@@ -1,0 +1,10 @@
+README.md
+setup.cfg
+setup.py
+halfedge_mesh/__init__.py
+halfedge_mesh/config.py
+halfedge_mesh/halfedge_mesh.py
+halfedge_mesh.egg-info/PKG-INFO
+halfedge_mesh.egg-info/SOURCES.txt
+halfedge_mesh.egg-info/dependency_links.txt
+halfedge_mesh.egg-info/top_level.txt

@@ -64,7 +64,7 @@ class HalfedgeMesh:
         """Determine the type of file and use the appropriate parser.
 
         Returns a HalfedgeMesh
-        """
+#        """
         try:
             with open(filename, 'r') as file:
 
@@ -218,6 +218,27 @@ class HalfedgeMesh:
         Returns a halfedge
         """
         return self.edges[(u, v)]
+    
+    ############################################# Creer fichier OFF avec couleur
+    def write_off_mesh(self, filename):
+        file = open(filename, "w")
+        file.write("OFF\n")
+        
+        h = [len(self.vertices), len(self.facets), len(self.edges)]
+        for p in h:
+            file.write(str(p))
+            file.write(" ")
+            
+        file.write("\n")
+        for v in self.vertices:
+            v.write_vertex(file)
+        
+        for face in self.facets:
+            face.write_face(file)
+
+        file.close()
+
+
 
     def update_vertices(self, vertices):
         # update vertices
@@ -421,6 +442,76 @@ class HalfedgeMesh:
         return listeG
 
 
+    ######################################### TP4
+
+    def calcul_angle_diedral_face_par_moyenne(self):
+        a = []
+        res = {}
+        for f in self.facets:
+            a = f.get_every_angle_normal()
+            moy = sum(a) / 3    #3 car 3 côtés d'un triangle
+            res[f.index] = moy
+
+        return res
+
+    def visualisation_propriete_locale(self):
+        angles = self.calcul_angle_diedral_face_par_moyenne()
+
+        minA = min(angles.items(), key=lambda x : x[1])[1]
+        maxA = max(angles.items(), key=lambda x : x[1])[1]
+        
+        for f in angles:
+            degrade = self.get_color(minA, maxA, angles[f])
+            self.facets[f].color = [255, degrade, degrade] 
+        
+        self.write_off_mesh("cube-visualisation.off")
+
+    def get_color(self, min, max, angle):
+        return int(((angle - min)/(max - min)) * 255)
+    
+    
+    def segmentation_deux_classes(self,  methodeCalcul=None, seuil=None):
+        angles = self.calcul_angle_diedral_face_par_moyenne()
+        
+        if methodeCalcul is None and seuil is None:
+            return None
+
+        if methodeCalcul == "moyenne":
+            seuil = sum(angles.values()) / len(angles)
+        
+        elif methodeCalcul == "mediane":
+            angles_sorted = dict(sorted(angles.items(), key=lambda item: item[1]))
+            seuil = angles_sorted[int(len(angles_sorted) / 2)]
+            
+        elif methodeCalcul == "histogramme":
+            pass
+
+        res = {}
+
+        for key,value in angles.items():
+            if value < seuil:
+                res[key] = 1
+            else:
+                res[key] = 2
+        
+        return res
+
+
+    def visualisation_segmentation(self, methodeCalcul=None):
+        if methodeCalcul is None:
+            return
+
+        segmentation = self.segmentation_deux_classes(methodeCalcul)
+
+        red = [255, 0, 0]
+        white = [255, 255, 255]
+        for f in self.facets:
+            if segmentation[f.index] == 1:
+                f.color = red
+            else:
+                f.color = white
+
+        self.write_off_mesh("cube-colore-segmentation.off")
 
         
 class Vertex:
@@ -455,6 +546,14 @@ class Vertex:
 
     def get_vertex(self):
         return [self.x, self.y, self.z]
+    
+    ##########################
+    def write_vertex(self, file):
+        c = [self.x, self.y, self.z]
+        for p in c:
+            file.write(str(p))
+            file.write(" ")
+        file.write("\n")
 
     def distance(self,v2):
         return math.sqrt((v2.x - self.x)**2 + (v2.y - self.y)**2 + (v2.z - self.z)**2)
@@ -476,12 +575,14 @@ class Vertex:
 
 class Facet:
 
-    def __init__(self, a=-1, b=-1, c=-1, index=None, halfedge=None):
+    def __init__(self, a=-1, b=-1, c=-1, index=None, halfedge=None, color=[]):
         """Create a facet with the given index with three vertices.
 
         a, b, c - indices for the vertices in the facet, counter clockwise.
         index - index of facet in the mesh
         halfedge - a Halfedge that belongs to the facet
+        
+        color - color of the facet [R, G, B] from 0 to 255
         """
         self.a = a
         self.b = b
@@ -489,6 +590,8 @@ class Facet:
         self.index = index
         # halfedge going ccw around this facet.
         self.halfedge = halfedge
+        
+        self.color = color
 
     def __eq__(self, other):
         return self.a == other.a and self.b == other.b and self.c == other.c \
@@ -498,6 +601,24 @@ class Facet:
         return hash(self.halfedge) ^ hash(self.a) ^ hash(self.b) ^ \
             hash(self.c) ^ hash(self.index) ^ \
             hash((self.halfedge, self.a, self.b, self.c, self.index))
+    
+    
+    ########################################
+    def write_face(self, file):
+        vertex = [self.halfedge.next.next.vertex.index, \
+                self.halfedge.vertex.index, \
+                self.halfedge.next.vertex.index]
+
+        file.write(str(len(vertex)))
+        file.write(" ")
+        for v in vertex:
+            file.write(str(v))
+            file.write(" ")
+
+        for p in self.color:
+            file.write(str(p))
+            file.write(" ")
+        file.write("\n")
 
     def get_normal(self):
         """Calculate the normal of facet
@@ -526,6 +647,18 @@ class Facet:
         normal = normalize(normal)
 
         return normal
+
+    def get_every_angle_normal(self):
+        current = self.halfedge
+        next = self.halfedge.next
+        res = []
+        res.append(self.halfedge.get_angle_normal())
+        while current != next:
+            res.append(next.get_angle_normal())
+            next = next.next
+
+        return res
+
 
 
 class Halfedge:

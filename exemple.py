@@ -7,6 +7,7 @@ filename = "tests/data/cube.off"
 mesh = halfedge_mesh.HalfedgeMesh(filename)
 
 mesh2 = halfedge_mesh.HalfedgeMesh("tests/data/mesh-02.off")
+mesh3 = halfedge_mesh.HalfedgeMesh("tests/data/mesh-03.off")
 
 cubeSmooth = halfedge_mesh.HalfedgeMesh("tests/data/cube-smooth.off")
 
@@ -65,7 +66,8 @@ print(angles)
 #print(segmentation)
 
 #cubeSmooth.visualisation_segmentation("medianne")
-cubeSmooth.visualisation_propriete_locale()
+#cubeSmooth.visualisation_propriete_locale()
 
+print(cubeSmooth.visualisation_segmentation_composantes_connexes("mediane"))
 
         

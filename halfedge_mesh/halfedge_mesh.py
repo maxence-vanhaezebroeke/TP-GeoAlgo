@@ -2,6 +2,7 @@ import sys
 from . import config
 import math
 import functools
+import random
 
 # python3 compatibility
 try:
@@ -220,6 +221,7 @@ class HalfedgeMesh:
         return self.edges[(u, v)]
     
     ############################################# Creer fichier OFF avec couleur
+    #Fonction ajoutée
     def write_off_mesh(self, filename):
         file = open(filename, "w")
         file.write("OFF\n")
@@ -289,7 +291,7 @@ class HalfedgeMesh:
         return res
 
     #####################################
-
+    #Fonction ajoutée
     def dijkstra(self, source):
         Q = set()
         dists = {}
@@ -314,7 +316,7 @@ class HalfedgeMesh:
 
         return dists, prev
 
-
+    #Fonction ajoutée
     def parcours_voisins(self, v):
         h = v.halfedge
         first = True
@@ -332,6 +334,7 @@ class HalfedgeMesh:
         
         return distances
 
+    #Fonction ajoutée
     def closest(self,openVerts):
         mini = 99999
         for key,value in openVerts.items():
@@ -346,6 +349,7 @@ class HalfedgeMesh:
     #drapeau doit retourner trois tableaux : un tableau pour les vertices
     #un tableau pour les halfedges et un tableau pour les facets
 
+    #Fonction ajoutée
     def composantes_connexes(self):
         drapeau = [0 for v in self.vertices] #drapeau initiés à zéro
         cpt = 0
@@ -361,6 +365,7 @@ class HalfedgeMesh:
 
         return cpt, drapeau
 
+    #Fonction ajoutée
     def parcours_en_profondeur(self, vertex, drapeau, couleur):
         #On colorie le sommet actuel (va servir pour le 1er sommet du 1er parcours)
         drapeau[vertex.index] = couleur
@@ -383,6 +388,7 @@ class HalfedgeMesh:
 
         return drapeau
 
+
     #Fonction privée : pas besoin de toucher
     def calcul_genre_une_composante(self):
         sommets = len(self.vertices)
@@ -396,6 +402,7 @@ class HalfedgeMesh:
     #TODO: si la fonction de composante connexe colorie bien les faces et demi aretes
     #On va pouvoir faire fonctionner cet algo
 
+    #Fonction ajoutée
     #Retourne le calcul du genre
     def calcul_genre(self):
         nb, drapeau = self.composantes_connexes()
@@ -444,6 +451,7 @@ class HalfedgeMesh:
 
     ######################################### TP4
 
+    #Fonction ajoutée
     def calcul_angle_diedral_face_par_moyenne(self):
         a = []
         res = {}
@@ -454,6 +462,7 @@ class HalfedgeMesh:
 
         return res
 
+    #Fonction ajoutée
     def visualisation_propriete_locale(self):
         angles = self.calcul_angle_diedral_face_par_moyenne()
 
@@ -466,10 +475,11 @@ class HalfedgeMesh:
         
         self.write_off_mesh("cube-visualisation.off")
 
+    #Fonction ajoutée
     def get_color(self, min, max, angle):
         return int(((angle - min)/(max - min)) * 255)
     
-    
+    #Fonction ajoutée
     def segmentation_deux_classes(self,  methodeCalcul=None, seuil=None):
         angles = self.calcul_angle_diedral_face_par_moyenne()
         
@@ -496,7 +506,7 @@ class HalfedgeMesh:
         
         return res
 
-
+    #Fonction ajoutée
     def visualisation_segmentation(self, methodeCalcul=None):
         if methodeCalcul is None:
             return
@@ -513,7 +523,47 @@ class HalfedgeMesh:
 
         self.write_off_mesh("cube-colore-segmentation.off")
 
+
+    #Fonction ajoutée
+    def visualisation_segmentation_composantes_connexes(self, methodeCalcul=None):
+        if methodeCalcul is None:
+            return
+
+        segmentation = self.segmentation_deux_classes(methodeCalcul)
+
+        red = [255, 0, 0]
+        white = [255, 255, 255]
+
+        colors = [[random.randint(0,255) for i in range(3)] for j in range(13000)]
         
+        #print(segmentation)
+        #segmentation[f.index] = sa couleur
+        color = 2
+
+        for k,v in segmentation.items():
+            if v == 1:
+                segmentation = self.colorie_face_connexe(segmentation, k, color)
+                color += 1
+
+        #print(segmentation)
+
+        for k,v in segmentation.items():
+            print(k,v)
+            self.facets[k].color = colors[v]
+
+        self.write_off_mesh("cube-colore-segmentation.off")
+
+    #Fonction ajoutée
+    def colorie_face_connexe(self, segmentation, index, color):
+        segmentation[index] = color
+
+        for f in self.facets[index].adjacent_faces_2():
+            if segmentation[f.index] == 1:
+                segmentation = self.colorie_face_connexe(segmentation, f.index, color)
+
+        return segmentation
+
+
 class Vertex:
 
     def __init__(self, x=0, y=0, z=0, index=None, halfedge=None):
@@ -548,6 +598,7 @@ class Vertex:
         return [self.x, self.y, self.z]
     
     ##########################
+    #Fonction ajoutée
     def write_vertex(self, file):
         c = [self.x, self.y, self.z]
         for p in c:
@@ -555,9 +606,11 @@ class Vertex:
             file.write(" ")
         file.write("\n")
 
+    #Fonction ajoutée
     def distance(self,v2):
         return math.sqrt((v2.x - self.x)**2 + (v2.y - self.y)**2 + (v2.z - self.z)**2)
 
+    #Fonction ajoutée
     def voisins(self):
         out = []
         h = self.halfedge
@@ -602,8 +655,33 @@ class Facet:
             hash(self.c) ^ hash(self.index) ^ \
             hash((self.halfedge, self.a, self.b, self.c, self.index))
     
+    ########################################
+    #Fonction ajoutée
+    def adjacent_faces(self):
+        faces = []
+        temp = self.halfedge
+        faces.append(temp.opposite.facet)
+        temp = self.halfedge.next_arround_vertex()
+        while temp != self.halfedge:
+            faces.append(temp.opposite.facet)
+            temp = temp.next_arround_vertex()
+        return faces
+
+    def adjacent_faces_2(self):
+        h = self.halfedge
+        faces = []
+        h2 = h
+        while True:
+            f2 = h.opposite.facet
+            faces.append(f2)
+            h2 = h2.next
+            if h2 == h:
+                break
+        return faces
     
     ########################################
+
+    #Fonction ajoutée
     def write_face(self, file):
         vertex = [self.halfedge.next.next.vertex.index, \
                 self.halfedge.vertex.index, \
@@ -648,6 +726,7 @@ class Facet:
 
         return normal
 
+    #Fonction ajoutée
     def get_every_angle_normal(self):
         current = self.halfedge
         next = self.halfedge.next
@@ -726,6 +805,7 @@ class Halfedge:
         else:
             return 0
 
+    #Fonction ajoutée
     def next_arround_vertex(self):
         return self.opposite.prev
 

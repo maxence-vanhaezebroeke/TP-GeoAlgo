@@ -1,46 +1,50 @@
 import halfedge_mesh
+import os
 
-# à mettre en paramètre lors de l'exec python
-filename = "tests/data/cube.off"
+if not os.path.exists('out'):
+    os.makedirs('out')
 
-# .off are supported
-mesh = halfedge_mesh.HalfedgeMesh(filename)
+# mettre le nom du fichier .off en paramètre lors de l'exec python ?
+
+cube = halfedge_mesh.HalfedgeMesh("tests/data/cube.off")
 
 mesh2 = halfedge_mesh.HalfedgeMesh("tests/data/mesh-02.off")
 mesh3 = halfedge_mesh.HalfedgeMesh("tests/data/mesh-03.off")
 
 cubeSmooth = halfedge_mesh.HalfedgeMesh("tests/data/cube-smooth.off")
 
+test1 = halfedge_mesh.HalfedgeMesh("tests/data/test1-2cc.off")
+
 # Returns a list of Vertex type (in order of file)--similarly for halfedges,
 # and facets
-#mesh.vertices
+#cube.vertices
 
 # The number of facets in the mesh
-#print(len(mesh.facets))
+#print(len(cube.facets))
 
-#print(mesh.vertices[5])
+#print(cube.vertices[5])
 
 ''' TP3
 print("halfedge puis faces du cube de base : ")
-print(len(mesh.halfedges))
-print(len(mesh.facets))
+print(len(cube.halfedges))
+print(len(cube.facets))
 '''
 
 # Get the halfedge that starts at vertex 25 and ends at vertex 50
-#mesh.get_halfedge(25, 50)
+#cube.get_halfedge(25, 50)
 
 
-#first_hedge = mesh.vertices[0].halfedge
+#first_hedge = cube.vertices[0].halfedge
 #hedge = first_hedge.next_arround_edge()
 #while hedge != first_hedge:
     #print(str(hedge) + " arround " + str(hedge.vertex.index))
     #hedge = hedge.next_arround_edge()
 
 
-#mesh.dijkstra(mesh.vertices[0])
+#cube.dijkstra(cube.vertices[0])
 
 ''' TP3
-nb1, drapeau1 = mesh.composantes_connexes()
+nb1, drapeau1 = cube.composantes_connexes()
 print("Nombre de composantes connexes du cube : ")
 print(nb1)
 
@@ -50,7 +54,7 @@ print(nb2)
 print(drapeau2)
 
 print("Calcul du genre de notre cube :")
-print(mesh.calcul_genre())
+print(cube.calcul_genre())
 
 print("Calcul du genre de mesh-02 : ")
 print(mesh2.calcul_genre())
@@ -65,9 +69,11 @@ print(angles)
 #segmentation = cubeSmooth.segmentation_deux_classes("moyenne")
 #print(segmentation)
 
-#cubeSmooth.visualisation_segmentation("medianne")
-#cubeSmooth.visualisation_propriete_locale()
+#cubeSmooth.visualisation_segmentation("out/cube-colore-segmentation.off", methodeCalcul="mediane")
+cubeSmooth.visualisation_propriete_locale("out/cube-visualisation.off")
 
-print(cubeSmooth.visualisation_segmentation_composantes_connexes("mediane"))
+cubeSmooth.visualisation_segmentation_composantes_connexes("out/cube-colore-segmentation.off", methodeCalcul="mediane")
 
-        
+test1.write_colored_CC("out/test1-2cc-colored.off")
+mesh2.write_colored_CC("out/mesh02-cc-colored.off")
+mesh3.write_colored_CC("out/mesh03-cc-colored.off")

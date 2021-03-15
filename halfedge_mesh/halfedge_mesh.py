@@ -1,8 +1,9 @@
 import sys
+sys.setrecursionlimit(40000) #HACK pas ouf, faudrait changer le truc récursif en une loop ? (colorie_face_connexe())
 from . import config
 import math
 import functools
-import random
+from random import randint
 
 # python3 compatibility
 try:
@@ -65,7 +66,7 @@ class HalfedgeMesh:
         """Determine the type of file and use the appropriate parser.
 
         Returns a HalfedgeMesh
-#        """
+        """
         try:
             with open(filename, 'r') as file:
 
@@ -132,7 +133,6 @@ class HalfedgeMesh:
                     Edges[ pair(v,u) ]->oppositeHalfEdge = Edges[ pair(u,v) ];
             }
         }
-
         """
         Edges = {}
         facets = []
@@ -220,28 +220,6 @@ class HalfedgeMesh:
         """
         return self.edges[(u, v)]
     
-    ############################################# Creer fichier OFF avec couleur
-    #Fonction ajoutée
-    def write_off_mesh(self, filename):
-        file = open(filename, "w")
-        file.write("OFF\n")
-        
-        h = [len(self.vertices), len(self.facets), len(self.edges)]
-        for p in h:
-            file.write(str(p))
-            file.write(" ")
-            
-        file.write("\n")
-        for v in self.vertices:
-            v.write_vertex(file)
-        
-        for face in self.facets:
-            face.write_face(file)
-
-        file.close()
-
-
-
     def update_vertices(self, vertices):
         # update vertices
         vlist = []
@@ -265,7 +243,6 @@ class HalfedgeMesh:
             flist.append(Facet(f.a, f.b, f.c, f.index,  hlist[hi]))
         self.facets = flist
 
-
         i = 0
         for he in self.halfedges:
             nextid = he.next.index
@@ -276,21 +253,37 @@ class HalfedgeMesh:
             hlist[i].opposite = hlist[oppid]
             hlist[i].prev = hlist[previd]
 
-
             fi = he.facet.index
             hlist[i].facet = flist[fi]
             i += 1
 
         self.halfedges = hlist
 
-
     def index_of_vertices(self):
         res = []
         for v in self.vertices:
             res.append(v.index)
         return res
+    
+    #Fonction ajoutée / Créer fichier OFF avec couleur de faces
+    def write_off_mesh(self, filename):
+        file = open(filename, "w")
+        file.write("OFF\n")
+        
+        h = [len(self.vertices), len(self.facets), len(self.edges)]
+        for p in h:
+            file.write(str(p))
+            file.write(" ")
+            
+        file.write("\n")
+        for v in self.vertices:
+            v.write_vertex(file)
+        
+        for face in self.facets:
+            face.write_face(file)
 
-    #####################################
+        file.close()
+
     #Fonction ajoutée
     def dijkstra(self, source):
         Q = set()
@@ -330,20 +323,20 @@ class HalfedgeMesh:
             print(v2.index)
 
             distances[v2.index] = h.vertex.distance(v2)
-            h = h.next_arround_vertex()
+            h = h.next_around_vertex()
         
         return distances
 
     #Fonction ajoutée
     def closest(self,openVerts):
-        mini = 99999
+        mini = 99999 #float("inf")
         for key,value in openVerts.items():
             if value < mini:
                 mini = value
 
         return openVerts.get(mini)
 
-    ### TP3 ##########################################
+    ### TP3 ###
 
     #TODO: Je pense qu'il va falloir colorier les faces et aretes
     #drapeau doit retourner trois tableaux : un tableau pour les vertices
@@ -364,13 +357,26 @@ class HalfedgeMesh:
                 couleur += 1
 
         return cpt, drapeau
+    
+    #Fonction ajoutée
+    def write_colored_CC(self, filename):
+        n, colorsCC = self.composantes_connexes() # liste couleurs pour chaque sommet suivant sa CC
+        
+        ccFaces = [colorsCC[f.a] - 1 for f in self.facets] # liste couleurs pour chaque face suivant sa CC (celle de son sommet a)
+        
+        colors = [[randint(0, 255) for i in range(3)] for i in range(len(set(ccFaces)))]
+        
+        for i, f in enumerate(self.facets):
+            f.color = colors[ccFaces[i]]
+
+        self.write_off_mesh(filename)
 
     #Fonction ajoutée
     def parcours_en_profondeur(self, vertex, drapeau, couleur):
         #On colorie le sommet actuel (va servir pour le 1er sommet du 1er parcours)
         drapeau[vertex.index] = couleur
         h = vertex.halfedge
-        h = h.next_arround_vertex()
+        h = h.next_around_vertex()
         unvisited = []
 
         #On colorie tout les voisins de vertex
@@ -380,14 +386,13 @@ class HalfedgeMesh:
                 unvisited.append(voisin)
                 drapeau[voisin.index] = couleur #Même pas obligatoire je pense
 
-            h = h.next_arround_vertex()
+            h = h.next_around_vertex()
 
         #Pour tous les points qui n'étaient pas visités, on en fait un parcours en prof (on continue)
         for v in unvisited:
             drapeau = self.parcours_en_profondeur(v, drapeau, couleur)
 
         return drapeau
-
 
     #Fonction privée : pas besoin de toucher
     def calcul_genre_une_composante(self):
@@ -463,7 +468,7 @@ class HalfedgeMesh:
         return res
 
     #Fonction ajoutée
-    def visualisation_propriete_locale(self):
+    def visualisation_propriete_locale(self, filename):
         angles = self.calcul_angle_diedral_face_par_moyenne()
 
         minA = min(angles.items(), key=lambda x : x[1])[1]
@@ -473,7 +478,7 @@ class HalfedgeMesh:
             degrade = self.get_color(minA, maxA, angles[f])
             self.facets[f].color = [255, degrade, degrade] 
         
-        self.write_off_mesh("cube-visualisation.off")
+        self.write_off_mesh(filename)
 
     #Fonction ajoutée
     def get_color(self, min, max, angle):
@@ -507,7 +512,7 @@ class HalfedgeMesh:
         return res
 
     #Fonction ajoutée
-    def visualisation_segmentation(self, methodeCalcul=None):
+    def visualisation_segmentation(self, filename, methodeCalcul=None):
         if methodeCalcul is None:
             return
 
@@ -521,44 +526,45 @@ class HalfedgeMesh:
             else:
                 f.color = white
 
-        self.write_off_mesh("cube-colore-segmentation.off")
+        self.write_off_mesh(filename)
 
 
     #Fonction ajoutée
-    def visualisation_segmentation_composantes_connexes(self, methodeCalcul=None):
+    def visualisation_segmentation_composantes_connexes(self, filename, methodeCalcul=None):
         if methodeCalcul is None:
             return
 
-        segmentation = self.segmentation_deux_classes(methodeCalcul)
+        segmentation2C = self.segmentation_deux_classes(methodeCalcul)
 
-        red = [255, 0, 0]
-        white = [255, 255, 255]
-
-        colors = [[random.randint(0,255) for i in range(3)] for j in range(13000)]
+        colors = [[randint(0, 255) for i in range(3)] for j in range(13000)] # 13000
         
-        #print(segmentation)
-        #segmentation[f.index] = sa couleur
-        color = 2
+        print(set(segmentation2C.values()))
+        #segmentation2C[f.index] = sa couleur
 
-        for k,v in segmentation.items():
-            if v == 1:
+        segmentation = segmentation2C.copy()
+        color = 3
+
+        for k, v in segmentation.items():
+            if v < 2:
                 segmentation = self.colorie_face_connexe(segmentation, k, color)
                 color += 1
 
-        #print(segmentation)
+        print("##############################################")
+        print(set(segmentation.values()))
+        #FIXME pourquoi ici les indices des couleurs sont bizarres ? j'arrive pas à avoir les deux listes qui commencent à 1
 
-        for k,v in segmentation.items():
-            print(k,v)
+        for k, v in segmentation.items():
+            #print(k, v) ##################
             self.facets[k].color = colors[v]
 
-        self.write_off_mesh("cube-colore-segmentation.off")
+        self.write_off_mesh(filename)
 
     #Fonction ajoutée
     def colorie_face_connexe(self, segmentation, index, color):
         segmentation[index] = color
 
-        for f in self.facets[index].adjacent_faces_2():
-            if segmentation[f.index] == 1:
+        for f in self.facets[index].adjacent_faces():
+            if segmentation[f.index] < 2:
                 segmentation = self.colorie_face_connexe(segmentation, f.index, color)
 
         return segmentation
@@ -584,7 +590,7 @@ class Vertex:
 
         self.halfedge = halfedge
 
-    # pylint: disable=no-self-argument
+    #pylint: disable=no-self-argument
     def __eq__(x, y):
         return x.__key() == y.__key() and type(x) == type(y)
 
@@ -597,7 +603,6 @@ class Vertex:
     def get_vertex(self):
         return [self.x, self.y, self.z]
     
-    ##########################
     #Fonction ajoutée
     def write_vertex(self, file):
         c = [self.x, self.y, self.z]
@@ -607,7 +612,7 @@ class Vertex:
         file.write("\n")
 
     #Fonction ajoutée
-    def distance(self,v2):
+    def distance(self, v2):
         return math.sqrt((v2.x - self.x)**2 + (v2.y - self.y)**2 + (v2.z - self.z)**2)
 
     #Fonction ajoutée
@@ -655,31 +660,13 @@ class Facet:
             hash(self.c) ^ hash(self.index) ^ \
             hash((self.halfedge, self.a, self.b, self.c, self.index))
     
-    ########################################
     #Fonction ajoutée
     def adjacent_faces(self):
         faces = []
-        temp = self.halfedge
-        faces.append(temp.opposite.facet)
-        temp = self.halfedge.next_arround_vertex()
-        while temp != self.halfedge:
-            faces.append(temp.opposite.facet)
-            temp = temp.next_arround_vertex()
+        halfedges = [self.halfedge, self.halfedge.next, self.halfedge.prev]
+        for h in halfedges :
+            faces.append(h.opposite.facet)
         return faces
-
-    def adjacent_faces_2(self):
-        h = self.halfedge
-        faces = []
-        h2 = h
-        while True:
-            f2 = h.opposite.facet
-            faces.append(f2)
-            h2 = h2.next
-            if h2 == h:
-                break
-        return faces
-    
-    ########################################
 
     #Fonction ajoutée
     def write_face(self, file):
@@ -806,7 +793,7 @@ class Halfedge:
             return 0
 
     #Fonction ajoutée
-    def next_arround_vertex(self):
+    def next_around_vertex(self):
         return self.opposite.prev
 
 
